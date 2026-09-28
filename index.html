@@ -556,6 +556,12 @@
     <label>配置番号
       <input type="text" id="inputSpaceNumber" placeholder="例: あ-12" />
     </label>
+    <label>表示通貨
+      <select id="inputCurrency">
+        <option value="JPY">日本円(¥)</option>
+        <option value="KRW">韓国ウォン(₩)</option>
+      </select>
+    </label>
     <label>販売モードのロックPIN(4桁・空欄=ロックしない)
       <input type="text" id="inputSellPin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="例: 1234" />
     </label>
@@ -584,6 +590,10 @@
 (function () {
   // ===================== STATE =====================
   const STORAGE_KEY = 'oshinagaki-maker-v1';
+  const CURRENCIES = {
+    JPY: { symbol: '¥', locale: 'ja-JP', label: '円' },
+    KRW: { symbol: '₩', locale: 'ko-KR', label: 'ウォン' }
+  };
   let state = loadState();
   let nextId = computeNextId();
   const imageCache = new Map(); // dataUrl -> HTMLImageElement
@@ -595,7 +605,8 @@
       products: [],
       sales: [],
       design: { theme: 'kraft', font: 'mincho', format: 'png', layout: 'auto' },
-      sellPin: ''
+      sellPin: '',
+      currency: 'JPY'
     };
   }
 
@@ -609,7 +620,8 @@
         products: Array.isArray(parsed.products) ? parsed.products : [],
         sales: Array.isArray(parsed.sales) ? parsed.sales : [],
         design: Object.assign({ theme: 'kraft', font: 'mincho', format: 'png', layout: 'auto' }, parsed.design || {}),
-        sellPin: typeof parsed.sellPin === 'string' ? parsed.sellPin : ''
+        sellPin: typeof parsed.sellPin === 'string' ? parsed.sellPin : '',
+        currency: CURRENCIES[parsed.currency] ? parsed.currency : 'JPY'
       });
     } catch (e) {
       return defaultState();
@@ -645,7 +657,8 @@
   }
 
   function yen(n) {
-    return '¥' + Math.round(n || 0).toLocaleString('ja-JP');
+    const c = CURRENCIES[state.currency] || CURRENCIES.JPY;
+    return c.symbol + Math.round(n || 0).toLocaleString(c.locale);
   }
 
   function escapeHtml(s) {
@@ -718,6 +731,7 @@
   const inputEventDate = document.getElementById('inputEventDate');
   const inputCircleName = document.getElementById('inputCircleName');
   const inputSpaceNumber = document.getElementById('inputSpaceNumber');
+  const inputCurrency = document.getElementById('inputCurrency');
   const inputSellPin = document.getElementById('inputSellPin');
 
   function openEventModal() {
@@ -725,6 +739,7 @@
     inputEventDate.value = state.event.eventDate;
     inputCircleName.value = state.event.circleName;
     inputSpaceNumber.value = state.event.spaceNumber;
+    inputCurrency.value = state.currency;
     inputSellPin.value = state.sellPin;
     eventModal.classList.remove('hidden');
   }
@@ -733,6 +748,8 @@
     state.event.eventDate = inputEventDate.value.trim();
     state.event.circleName = inputCircleName.value.trim();
     state.event.spaceNumber = inputSpaceNumber.value.trim();
+    const currencyChanged = inputCurrency.value !== state.currency;
+    state.currency = CURRENCIES[inputCurrency.value] ? inputCurrency.value : 'JPY';
     const pinVal = inputSellPin.value.trim();
     if (pinVal === '' || /^\d{4}$/.test(pinVal)) {
       state.sellPin = pinVal;
@@ -743,6 +760,11 @@
     eventModal.classList.add('hidden');
     renderEventSummary();
     updateLockUI();
+    if (currencyChanged) {
+      renderProducts();
+      renderSell();
+      if (document.getElementById('tab-preview').classList.contains('active')) renderPreview();
+    }
   }
   document.getElementById('eventInfoBtn').addEventListener('click', openEventModal);
   document.getElementById('eventSummary').addEventListener('click', openEventModal);
@@ -869,7 +891,7 @@
       row2.className = 'field-row';
 
       const priceLabel = document.createElement('label');
-      priceLabel.textContent = '価格(円)';
+      priceLabel.textContent = '価格(' + (CURRENCIES[state.currency] || CURRENCIES.JPY).label + ')';
       const priceInput = document.createElement('input');
       priceInput.type = 'number';
       priceInput.min = '0';

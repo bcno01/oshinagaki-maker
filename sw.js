@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oshinagaki-maker-v1';
+const CACHE_NAME = 'oshinagaki-maker-v2';
 const APP_SHELL = [
   './',
   './index.html',
